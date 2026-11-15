@@ -9,7 +9,9 @@ próprios documentos.
 
 1. No Firebase Console, habilite os provedores **E-mail/senha** e **Google** em
    Authentication e adicione os domínios de desenvolvimento e produção em
-   **Configurações > Domínios autorizados**.
+   **Configurações > Domínios autorizados**. O domínio efetivo precisa estar
+   autorizado tanto no Firebase Authentication quanto na configuração OAuth do
+   Google, quando aplicável.
 2. Crie o banco Cloud Firestore no projeto configurado em
    `src/services/firebase.js`.
 3. Publique as regras incluídas neste repositório. Com o Firebase CLI instalado e
@@ -35,6 +37,18 @@ Em qualquer página autenticada, use **Exportar PDF**. Na janela do navegador ou
 do dispositivo, escolha salvar como PDF ou compartilhar. O arquivo contém os
 dados da página aberta, sem os formulários de edição. Na página de chaves Pix, o
 aplicativo pede confirmação porque o PDF inclui as chaves completas.
+
+## Login Google em dispositivos móveis
+
+O app tenta primeiro autenticar com a janela do Google aberta pelo próprio
+navegador, evitando problemas de armazenamento entre domínios no fluxo de
+redirecionamento em Safari e navegadores móveis. Se o navegador bloquear essa
+janela, o app tenta o redirecionamento como alternativa. Para essa alternativa,
+o domínio do app deve estar autorizado no Firebase Authentication. Em hospedagem
+fora do Firebase Hosting, o fluxo de redirecionamento pode também exigir uma
+configuração de domínio/proxy conforme as [recomendações do Firebase](https://firebase.google.com/docs/auth/web/redirect-best-practices).
+Em dispositivos móveis, abra o app no Safari ou Chrome em vez de um navegador
+embutido em outro aplicativo.
 
 ## Desenvolvimento
 

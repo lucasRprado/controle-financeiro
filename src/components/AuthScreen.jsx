@@ -46,20 +46,13 @@ export function AuthScreen() {
     setIsSubmitting(true);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     try {
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-      } else {
-        await signInWithPopup(auth, provider);
-      }
+      await signInWithPopup(auth, provider);
     } catch (requestError) {
-      if (!isMobile && requestError?.code === 'auth/popup-blocked') {
+      if (requestError?.code === 'auth/popup-blocked') {
         try {
           await signInWithRedirect(auth, provider);
-          return;
         } catch (redirectError) {
           console.error('Não foi possível redirecionar para o Google:', redirectError);
           setError(firebaseErrorMessage(redirectError));
@@ -68,6 +61,7 @@ export function AuthScreen() {
         console.error('Não foi possível entrar com Google:', requestError);
         setError(firebaseErrorMessage(requestError));
       }
+    } finally {
       setIsSubmitting(false);
     }
   };

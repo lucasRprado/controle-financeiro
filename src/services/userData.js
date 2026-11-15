@@ -52,6 +52,11 @@ const firebaseErrors = {
     'Este método de acesso não está habilitado no Firebase Authentication.',
   'auth/popup-blocked': 'O navegador bloqueou a janela de autenticação. Tente novamente.',
   'auth/popup-closed-by-user': 'A janela de autenticação foi fechada antes da conclusão.',
+  'auth/cancelled-popup-request': 'Outra janela de autenticação já está em andamento. Tente novamente.',
+  'auth/web-storage-unsupported':
+    'O navegador bloqueou o armazenamento necessário para autenticar. Tente em um navegador padrão e atualizado.',
+  'auth/operation-not-supported-in-this-environment':
+    'Este ambiente não permite autenticação Google. Abra o app em um navegador compatível, como Safari ou Chrome.',
   'auth/unauthorized-domain':
     'Este domínio não está autorizado no Firebase Authentication. Adicione-o aos domínios autorizados.',
   'auth/user-disabled': 'Esta conta foi desativada. Entre em contato com o suporte.',
