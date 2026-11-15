@@ -9,20 +9,35 @@ import {
   Wallet,
 } from 'lucide-react';
 import React, { useState } from 'react';
+import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../hooks/useAuth';
+import { useUserCollection } from '../hooks/useUserCollection';
+import { db } from '../services/firebase';
+import {
+  createUserRecord,
+  firebaseErrorMessage,
+  fromCents,
+  toCents,
+  updateUserRecord,
+  userCollection,
+  userDocument,
+} from '../services/userData';
 
 const formatarMoeda = (valor) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
-const arredondarMoeda = (valor) => Math.round((valor + Number.EPSILON) * 100) / 100;
-const gerarId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+const formatarData = (timestamp) => {
+  const data = timestamp?.toDate?.();
+  return data ? data.toLocaleString('pt-BR') : 'Salvando...';
+};
 
 export function Investimentos() {
-  const [metas, setMetas] = useState([
-    { id: '1', nome: 'PlayStation 5', valorAlvo: 4000, valorGuardado: 400 },
-    { id: '2', nome: 'Viagem de Férias', valorAlvo: 5000, valorGuardado: 400 },
-  ]);
-  const [ativos, setAtivos] = useState([]);
-  const [movimentacoes, setMovimentacoes] = useState([]);
+  const { user } = useAuth();
+  const metasState = useUserCollection('goals');
+  const ativosState = useUserCollection('assets');
+  const movimentacoesState = useUserCollection('movements');
+  const [writeError, setWriteError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [nomeMeta, setNomeMeta] = useState('');
   const [valorAlvo, setValorAlvo] = useState('');
   const [aporteDestinoId, setAporteDestinoId] = useState('');
@@ -37,6 +52,28 @@ export function Investimentos() {
   const [contaEmEdicaoId, setContaEmEdicaoId] = useState('');
   const [nomeEmEdicao, setNomeEmEdicao] = useState('');
   const [valorAlvoEmEdicao, setValorAlvoEmEdicao] = useState('');
+
+  const metas = metasState.documents.map((meta) => ({
+    id: meta.id,
+    nome: meta.name,
+    valorAlvo: fromCents(meta.targetCents),
+    valorGuardado: fromCents(meta.balanceCents),
+  }));
+  const ativos = ativosState.documents.map((ativo) => ({
+    id: ativo.id,
+    nome: ativo.name,
+    saldo: fromCents(ativo.balanceCents),
+  }));
+  const movimentacoes = movimentacoesState.documents.map((movimentacao) => ({
+    id: movimentacao.id,
+    tipo: movimentacao.type,
+    descricao: movimentacao.description,
+    valor: fromCents(movimentacao.amountCents),
+    data: formatarData(movimentacao.createdAt),
+  }));
+  const loading = metasState.loading || ativosState.loading || movimentacoesState.loading;
+  const dataError = metasState.error || ativosState.error || movimentacoesState.error;
+  const isReady = !loading && !dataError;
 
   const contas = [
     ...metas.map((meta) => ({
@@ -53,41 +90,21 @@ export function Investimentos() {
     })),
   ];
 
-  const registrarMovimentacao = (tipo, descricao, valor) => {
-    setMovimentacoes((atuais) => [
-      {
-        id: gerarId(),
-        tipo,
-        descricao,
-        valor,
-        data: new Date().toLocaleDateString('pt-BR'),
-      },
-      ...atuais,
-    ].slice(0, 20));
-  };
-
-  const atualizarSaldo = (contaId, variacao) => {
-    const [tipo, id] = contaId.split(':');
-    if (tipo === 'meta') {
-      setMetas((atuais) =>
-        atuais.map((meta) =>
-          meta.id === id
-            ? { ...meta, valorGuardado: arredondarMoeda(meta.valorGuardado + variacao) }
-            : meta,
-        ),
-      );
-    } else {
-      setAtivos((atuais) =>
-        atuais.map((ativo) =>
-          ativo.id === id
-            ? { ...ativo, saldo: arredondarMoeda(ativo.saldo + variacao) }
-            : ativo,
-        ),
-      );
+  const executarOperacao = async (operacao, aposSucesso) => {
+    setWriteError('');
+    setIsSaving(true);
+    try {
+      await operacao();
+      aposSucesso?.();
+    } catch (error) {
+      console.error('Não foi possível salvar a movimentação de investimento:', error);
+      setWriteError(firebaseErrorMessage(error));
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleCriarMeta = (event) => {
+  const handleCriarMeta = async (event) => {
     event.preventDefault();
 
     const nome = nomeMeta.trim();
@@ -97,15 +114,20 @@ export function Investimentos() {
       return;
     }
 
-    setMetas((atuais) => [
-      ...atuais,
-      { id: gerarId(), nome, valorAlvo: arredondarMoeda(alvoNumerico), valorGuardado: 0 },
-    ]);
-    setNomeMeta('');
-    setValorAlvo('');
+    await executarOperacao(
+      () => createUserRecord(user.uid, 'goals', {
+        name: nome,
+        targetCents: toCents(alvoNumerico),
+        balanceCents: 0,
+      }),
+      () => {
+        setNomeMeta('');
+        setValorAlvo('');
+      },
+    );
   };
 
-  const handleFazerAporte = (event) => {
+  const handleFazerAporte = async (event) => {
     event.preventDefault();
 
     const valorNumerico = Number(valorAporte);
@@ -122,24 +144,54 @@ export function Investimentos() {
       return;
     }
 
-    const valor = arredondarMoeda(valorNumerico);
+    const valorCentavos = toCents(valorNumerico);
+    const referenciaMovimentacao = doc(userCollection(user.uid, 'movements'));
     if (aporteDestinoId === 'novo-ativo') {
-      setAtivos((atuais) => [
-        { id: gerarId(), nome: nomeNovoAtivo, saldo: valor },
-        ...atuais,
-      ]);
-      registrarMovimentacao('aporte', `Aporte inicial em ${nomeNovoAtivo}`, valor);
-      setNomeNovoAtivoAporte('');
+      const referenciaAtivo = doc(userCollection(user.uid, 'assets'));
+      await executarOperacao(() => runTransaction(db, async (transaction) => {
+        transaction.set(referenciaAtivo, {
+          name: nomeNovoAtivo,
+          balanceCents: valorCentavos,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        transaction.set(referenciaMovimentacao, {
+          type: 'aporte',
+          description: `Aporte inicial em ${nomeNovoAtivo}`,
+          amountCents: valorCentavos,
+          createdAt: serverTimestamp(),
+        });
+      }), () => {
+        setNomeNovoAtivoAporte('');
+        setAporteDestinoId('');
+        setValorAporte('');
+      });
     } else {
-      atualizarSaldo(aporteDestinoId, valor);
-      registrarMovimentacao('aporte', `Aporte em ${destino.nome}`, valor);
+      const [tipo, id] = aporteDestinoId.split(':');
+      const colecaoDestino = tipo === 'meta' ? 'goals' : 'assets';
+      const referenciaDestino = userDocument(user.uid, colecaoDestino, id);
+      await executarOperacao(() => runTransaction(db, async (transaction) => {
+        const destinoSnapshot = await transaction.get(referenciaDestino);
+        if (!destinoSnapshot.exists()) throw new Error('O destino do aporte não existe mais.');
+        const saldoAtual = Number(destinoSnapshot.data().balanceCents ?? 0);
+        transaction.update(referenciaDestino, {
+          balanceCents: saldoAtual + valorCentavos,
+          updatedAt: serverTimestamp(),
+        });
+        transaction.set(referenciaMovimentacao, {
+          type: 'aporte',
+          description: `Aporte em ${destino.nome}`,
+          amountCents: valorCentavos,
+          createdAt: serverTimestamp(),
+        });
+      }), () => {
+        setAporteDestinoId('');
+        setValorAporte('');
+      });
     }
-
-    setAporteDestinoId('');
-    setValorAporte('');
   };
 
-  const handleTransferirSaldo = (event) => {
+  const handleTransferirSaldo = async (event) => {
     event.preventDefault();
 
     const valorNumerico = Number(valorTransferencia);
@@ -159,34 +211,73 @@ export function Investimentos() {
       return;
     }
 
-    const valor = arredondarMoeda(valorNumerico);
-    atualizarSaldo(origem.id, -valor);
-    if (destinoTransferenciaId === 'novo-ativo') {
-      setAtivos((atuais) => [
-        { id: gerarId(), nome: nomeNovoAtivo, saldo: valor },
-        ...atuais,
-      ]);
-      registrarMovimentacao(
-        'transferencia',
-        `Transferência de ${origem.nome} para ${nomeNovoAtivo}`,
-        valor,
+    const valorCentavos = toCents(valorNumerico);
+    const [tipoOrigem, idOrigem] = origem.id.split(':');
+    const referenciaOrigem = userDocument(
+      user.uid,
+      tipoOrigem === 'meta' ? 'goals' : 'assets',
+      idOrigem,
+    );
+    const referenciaDestino = destinoTransferenciaId === 'novo-ativo'
+      ? doc(userCollection(user.uid, 'assets'))
+      : userDocument(
+        user.uid,
+        destino.tipo === 'meta' ? 'goals' : 'assets',
+        destino.id.split(':')[1],
       );
-      setNomeNovoAtivoTransferencia('');
-    } else {
-      atualizarSaldo(destino.id, valor);
-      registrarMovimentacao(
-        'transferencia',
-        `Transferência de ${origem.nome} para ${destino.nome}`,
-        valor,
-      );
-    }
+    const referenciaMovimentacao = doc(userCollection(user.uid, 'movements'));
+    const descricao = `Transferência de ${origem.nome} para ${
+      destinoTransferenciaId === 'novo-ativo' ? nomeNovoAtivo : destino.nome
+    }`;
 
-    setOrigemTransferenciaId('');
-    setDestinoTransferenciaId('');
-    setValorTransferencia('');
+    await executarOperacao(() => runTransaction(db, async (transaction) => {
+      const origemSnapshot = await transaction.get(referenciaOrigem);
+      if (!origemSnapshot.exists()) throw new Error('A origem da transferência não existe mais.');
+
+      const destinoSnapshot = destinoTransferenciaId === 'novo-ativo'
+        ? null
+        : await transaction.get(referenciaDestino);
+      if (destinoSnapshot && !destinoSnapshot.exists()) {
+        throw new Error('O destino da transferência não existe mais.');
+      }
+
+      const saldoOrigem = Number(origemSnapshot.data().balanceCents ?? 0);
+      if (valorCentavos > saldoOrigem) {
+        throw new Error('O valor não pode exceder o saldo disponível.');
+      }
+
+      transaction.update(referenciaOrigem, {
+        balanceCents: saldoOrigem - valorCentavos,
+        updatedAt: serverTimestamp(),
+      });
+      if (destinoTransferenciaId === 'novo-ativo') {
+        transaction.set(referenciaDestino, {
+          name: nomeNovoAtivo,
+          balanceCents: valorCentavos,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        transaction.update(referenciaDestino, {
+          balanceCents: Number(destinoSnapshot.data().balanceCents ?? 0) + valorCentavos,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      transaction.set(referenciaMovimentacao, {
+        type: 'transferencia',
+        description: descricao,
+        amountCents: valorCentavos,
+        createdAt: serverTimestamp(),
+      });
+    }), () => {
+      setNomeNovoAtivoTransferencia('');
+      setOrigemTransferenciaId('');
+      setDestinoTransferenciaId('');
+      setValorTransferencia('');
+    });
   };
 
-  const handleUtilizarSaldo = (event) => {
+  const handleUtilizarSaldo = async (event) => {
     event.preventDefault();
 
     const valorNumerico = Number(valorUtilizacao);
@@ -201,11 +292,36 @@ export function Investimentos() {
       return;
     }
 
-    const valor = arredondarMoeda(valorNumerico);
-    atualizarSaldo(conta.id, -valor);
-    registrarMovimentacao('utilizacao', `Saldo utilizado de ${conta.nome}`, valor);
-    setSaldoUtilizacaoId('');
-    setValorUtilizacao('');
+    const [tipo, id] = conta.id.split(':');
+    const referenciaConta = userDocument(
+      user.uid,
+      tipo === 'meta' ? 'goals' : 'assets',
+      id,
+    );
+    const referenciaMovimentacao = doc(userCollection(user.uid, 'movements'));
+    const valorCentavos = toCents(valorNumerico);
+
+    await executarOperacao(() => runTransaction(db, async (transaction) => {
+      const contaSnapshot = await transaction.get(referenciaConta);
+      if (!contaSnapshot.exists()) throw new Error('O recurso escolhido não existe mais.');
+      const saldoAtual = Number(contaSnapshot.data().balanceCents ?? 0);
+      if (valorCentavos > saldoAtual) {
+        throw new Error('O valor não pode exceder o saldo disponível.');
+      }
+      transaction.update(referenciaConta, {
+        balanceCents: saldoAtual - valorCentavos,
+        updatedAt: serverTimestamp(),
+      });
+      transaction.set(referenciaMovimentacao, {
+        type: 'utilizacao',
+        description: `Saldo utilizado de ${conta.nome}`,
+        amountCents: valorCentavos,
+        createdAt: serverTimestamp(),
+      });
+    }), () => {
+      setSaldoUtilizacaoId('');
+      setValorUtilizacao('');
+    });
   };
 
   const iniciarEdicao = (conta) => {
@@ -218,7 +334,7 @@ export function Investimentos() {
     );
   };
 
-  const handleSalvarEdicao = (event) => {
+  const handleSalvarEdicao = async (event) => {
     event.preventDefault();
 
     const nome = nomeEmEdicao.trim();
@@ -233,42 +349,45 @@ export function Investimentos() {
       return;
     }
 
-    if (conta.tipo === 'meta') {
-      setMetas((atuais) =>
-        atuais.map((meta) =>
-          `meta:${meta.id}` === conta.id
-            ? { ...meta, nome, valorAlvo: arredondarMoeda(alvoNumerico) }
-            : meta,
-        ),
-      );
-    } else {
-      setAtivos((atuais) =>
-        atuais.map((ativo) =>
-          `ativo:${ativo.id}` === conta.id ? { ...ativo, nome } : ativo,
-        ),
-      );
-    }
-
-    setContaEmEdicaoId('');
-    setNomeEmEdicao('');
-    setValorAlvoEmEdicao('');
+    const [tipo, id] = conta.id.split(':');
+    const colecao = tipo === 'meta' ? 'goals' : 'assets';
+    const dados = tipo === 'meta'
+      ? { name: nome, targetCents: toCents(alvoNumerico) }
+      : { name: nome };
+    await executarOperacao(
+      () => updateUserRecord(user.uid, colecao, id, dados),
+      () => {
+        setContaEmEdicaoId('');
+        setNomeEmEdicao('');
+        setValorAlvoEmEdicao('');
+      },
+    );
   };
 
-  const handleExcluirConta = (conta) => {
+  const handleExcluirConta = async (conta) => {
     if (conta.saldo > 0) return;
     if (!window.confirm(`Deseja excluir "${conta.nome}"?`)) return;
 
-    if (conta.tipo === 'meta') {
-      setMetas((atuais) => atuais.filter((meta) => `meta:${meta.id}` !== conta.id));
-    } else {
-      setAtivos((atuais) => atuais.filter((ativo) => `ativo:${ativo.id}` !== conta.id));
-    }
-
-    if (contaEmEdicaoId === conta.id) setContaEmEdicaoId('');
-    if (aporteDestinoId === conta.id) setAporteDestinoId('');
-    if (origemTransferenciaId === conta.id) setOrigemTransferenciaId('');
-    if (destinoTransferenciaId === conta.id) setDestinoTransferenciaId('');
-    if (saldoUtilizacaoId === conta.id) setSaldoUtilizacaoId('');
+    const [tipo, id] = conta.id.split(':');
+    const referencia = userDocument(
+      user.uid,
+      tipo === 'meta' ? 'goals' : 'assets',
+      id,
+    );
+    await executarOperacao(() => runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(referencia);
+      if (!snapshot.exists()) throw new Error('Este recurso já foi removido.');
+      if (Number(snapshot.data().balanceCents ?? 0) > 0) {
+        throw new Error('Transfira ou utilize o saldo antes de excluir este recurso.');
+      }
+      transaction.delete(referencia);
+    }), () => {
+      if (contaEmEdicaoId === conta.id) setContaEmEdicaoId('');
+      if (aporteDestinoId === conta.id) setAporteDestinoId('');
+      if (origemTransferenciaId === conta.id) setOrigemTransferenciaId('');
+      if (destinoTransferenciaId === conta.id) setDestinoTransferenciaId('');
+      if (saldoUtilizacaoId === conta.id) setSaldoUtilizacaoId('');
+    });
   };
 
   const renderEdicao = (conta) => {
@@ -328,6 +447,11 @@ export function Investimentos() {
           Acompanhe seus recursos, movimente saldos e ajuste seus objetivos quando precisar.
         </p>
       </header>
+
+      {(writeError || dataError) && (
+        <p className="feedback-error" role="alert">{writeError || dataError}</p>
+      )}
+      {loading && <p className="feedback-note" role="status">Carregando seus investimentos e metas...</p>}
 
       <section className="dashboard-grid investment-summary-grid" aria-label="Resumo dos recursos">
         <article className="summary-card">
@@ -389,7 +513,13 @@ export function Investimentos() {
               required
             />
           </div>
-          <button className="button button-primary" type="submit">Criar meta</button>
+          <button
+            className="button button-primary"
+            type="submit"
+            disabled={isSaving || !isReady}
+          >
+            Criar meta
+          </button>
         </form>
       </section>
 
@@ -449,7 +579,11 @@ export function Investimentos() {
               required
             />
           </div>
-          <button className="button button-primary investment-form-submit" type="submit">
+          <button
+            className="button button-primary investment-form-submit"
+            type="submit"
+            disabled={isSaving || !isReady}
+          >
             Registrar aporte
           </button>
         </form>
@@ -531,7 +665,11 @@ export function Investimentos() {
               required
             />
           </div>
-          <button className="button button-primary investment-form-submit" type="submit">
+          <button
+            className="button button-primary investment-form-submit"
+            type="submit"
+            disabled={isSaving || !isReady}
+          >
             <ArrowLeftRight size={17} aria-hidden="true" />
             Transferir saldo
           </button>
@@ -580,7 +718,11 @@ export function Investimentos() {
               required
             />
           </div>
-          <button className="button button-expense investment-form-submit" type="submit">
+          <button
+            className="button button-expense investment-form-submit"
+            type="submit"
+            disabled={isSaving || !isReady}
+          >
             Utilizar saldo
           </button>
         </form>
@@ -620,14 +762,14 @@ export function Investimentos() {
                     <div className="progress-value" style={{ width: `${progresso}%` }} />
                   </div>
                   <div className="resource-actions">
-                    <button className="button button-secondary" type="button" onClick={() => iniciarEdicao(conta)}>
+                    <button className="button button-secondary" type="button" disabled={isSaving || !isReady} onClick={() => iniciarEdicao(conta)}>
                       <Pencil size={16} aria-hidden="true" />
                       Editar meta
                     </button>
                     <button
                       className="button button-danger"
                       type="button"
-                      disabled={meta.valorGuardado > 0}
+                      disabled={meta.valorGuardado > 0 || isSaving || !isReady}
                       title={meta.valorGuardado > 0 ? 'Transfira ou utilize o saldo antes de excluir.' : undefined}
                       onClick={() => handleExcluirConta(conta)}
                     >
@@ -669,14 +811,14 @@ export function Investimentos() {
                     <span className="goal-amounts">{formatarMoeda(ativo.saldo)} acompanhado</span>
                   </div>
                   <div className="resource-actions">
-                    <button className="button button-secondary" type="button" onClick={() => iniciarEdicao(conta)}>
+                    <button className="button button-secondary" type="button" disabled={isSaving || !isReady} onClick={() => iniciarEdicao(conta)}>
                       <Pencil size={16} aria-hidden="true" />
                       Editar recurso
                     </button>
                     <button
                       className="button button-danger"
                       type="button"
-                      disabled={ativo.saldo > 0}
+                      disabled={ativo.saldo > 0 || isSaving || !isReady}
                       title={ativo.saldo > 0 ? 'Transfira ou utilize o saldo antes de excluir.' : undefined}
                       onClick={() => handleExcluirConta(conta)}
                     >

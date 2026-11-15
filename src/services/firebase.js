@@ -1,20 +1,44 @@
-// Importa as funções necessárias do SDK do Firebase para inicializar o app e o Firestore
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 
-// Objeto de configuração contendo as credenciais do seu projeto Firebase.
 const firebaseConfig = {
-  apiKey: "AIzaSyATRhpgkWqIDpkoyd1Xg-d5Vc7sRnH5w_Q",
-  authDomain: "fin-app-a0b9c.firebaseapp.com",
-  projectId: "fin-app-a0b9c",
-  storageBucket: "fin-app-a0b9c.firebasestorage.app",
-  messagingSenderId: "880315529064",
-  appId: "1:880315529064:web:983fd6f35ab02e9a0e48dd"
+  apiKey: 'AIzaSyATRhpgkWqIDpkoyd1Xg-d5Vc7sRnH5w_Q',
+  authDomain: 'fin-app-a0b9c.firebaseapp.com',
+  projectId: 'fin-app-a0b9c',
+  storageBucket: 'fin-app-a0b9c.firebasestorage.app',
+  messagingSenderId: '880315529064',
+  appId: '1:880315529064:web:983fd6f35ab02e9a0e48dd',
+};
+
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+export const auth = getAuth(app);
+
+const firestoreCacheKey = '__financasFirestoreInstance';
+let firestore = globalThis[firestoreCacheKey];
+
+if (!firestore) {
+  try {
+    firestore = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch (error) {
+    if (error?.code !== 'failed-precondition') throw error;
+    console.warn(
+      'O Firestore já estava inicializado nesta sessão; recarregue a página para ativar o cache persistente.',
+      error,
+    );
+    firestore = getFirestore(app);
+  }
+  globalThis[firestoreCacheKey] = firestore;
 }
 
-// Inicializa o aplicativo Firebase com as configurações informadas acima
-const app = initializeApp(firebaseConfig);
-
-// Inicializa e exporta o serviço do Firestore (Banco de Dados NoSQL)
-// Este objeto 'db' será importado nas telas para buscar, salvar e atualizar dados.
-export const db = getFirestore(app);
+export const db = firestore;

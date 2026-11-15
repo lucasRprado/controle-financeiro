@@ -1,5 +1,12 @@
 import { Check, Copy, KeyRound, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { useUserCollection } from '../hooks/useUserCollection';
+import {
+  createUserRecord,
+  deleteUserRecord,
+  firebaseErrorMessage,
+} from '../services/userData';
 
 const tipoChaveLabel = {
   cpf: 'CPF',
@@ -9,14 +16,14 @@ const tipoChaveLabel = {
 };
 
 export function PixKeys() {
-  const [chaves, setChaves] = useState([
-    { id: '1', banco: 'Itaú', tipo: 'cpf', valor: '123.456.789-00' },
-    { id: '2', banco: 'Nubank', tipo: 'email', valor: 'lucas@email.com' },
-  ]);
+  const { user } = useAuth();
+  const { documents: chaves, loading, error: loadError } = useUserCollection('pixKeys');
   const [banco, setBanco] = useState('');
   const [tipo, setTipo] = useState('cpf');
   const [valorChave, setValorChave] = useState('');
   const [copiadoId, setCopiadoId] = useState(null);
+  const [writeError, setWriteError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const aplicarMascara = (texto, tipoChave) => {
     const apenasNumeros = texto.replace(/\D/g, '');
@@ -39,7 +46,7 @@ export function PixKeys() {
     return texto;
   };
 
-  const handleCadastrarChave = (event) => {
+  const handleCadastrarChave = async (event) => {
     event.preventDefault();
 
     if (!banco.trim() || !valorChave.trim()) {
@@ -47,29 +54,46 @@ export function PixKeys() {
       return;
     }
 
-    setChaves((atuais) => [
-      {
-        id: Date.now().toString(),
-        banco: banco.trim(),
-        tipo,
-        valor: valorChave.trim(),
-      },
-      ...atuais,
-    ]);
-    setBanco('');
-    setValorChave('');
+    setWriteError('');
+    setIsSaving(true);
+    try {
+      await createUserRecord(user.uid, 'pixKeys', {
+        bank: banco.trim(),
+        type: tipo,
+        value: valorChave.trim(),
+      });
+      setBanco('');
+      setValorChave('');
+    } catch (error) {
+      console.error('Não foi possível salvar a chave Pix:', error);
+      setWriteError(firebaseErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleCopiarChave = (id, valor) => {
-    navigator.clipboard.writeText(valor)
-      .then(() => {
-        setCopiadoId(id);
-        setTimeout(() => setCopiadoId(null), 2000);
-      })
-      .catch((erro) => {
-        console.error('Erro ao copiar chave:', erro);
-        alert('Não foi possível copiar a chave.');
-      });
+  const handleCopiarChave = async (id, valor) => {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('A cópia não está disponível neste navegador.');
+      }
+      await navigator.clipboard.writeText(valor);
+      setCopiadoId(id);
+      setTimeout(() => setCopiadoId(null), 2000);
+    } catch (error) {
+      console.error('Erro ao copiar chave:', error);
+      setWriteError(error.message || 'Não foi possível copiar a chave.');
+    }
+  };
+
+  const handleExcluirChave = async (id) => {
+    setWriteError('');
+    try {
+      await deleteUserRecord(user.uid, 'pixKeys', id);
+    } catch (error) {
+      console.error('Não foi possível excluir a chave Pix:', error);
+      setWriteError(firebaseErrorMessage(error));
+    }
   };
 
   return (
@@ -81,6 +105,11 @@ export function PixKeys() {
           Organize suas chaves por banco e copie-as quando precisar.
         </p>
       </header>
+
+      {(writeError || loadError) && (
+        <p className="feedback-error" role="alert">{writeError || loadError}</p>
+      )}
+      {loading && <p className="feedback-note" role="status">Carregando suas chaves Pix...</p>}
 
       <form className="surface-card pix-form-card" onSubmit={handleCadastrarChave}>
         <div className="section-heading">
@@ -143,7 +172,11 @@ export function PixKeys() {
           />
         </div>
 
-        <button className="button button-primary form-submit" type="submit">
+        <button
+          className="button button-primary form-submit"
+          type="submit"
+          disabled={isSaving || loading || Boolean(loadError)}
+        >
           Salvar chave Pix
         </button>
       </form>
@@ -157,17 +190,17 @@ export function PixKeys() {
             {chaves.map((item) => (
               <li className="pix-key-item" key={item.id}>
                 <div>
-                  <span className="key-bank">{item.banco}</span>
-                  <strong className="key-value">{item.valor}</strong>
-                  <span className="key-type">{tipoChaveLabel[item.tipo] ?? item.tipo}</span>
+                  <span className="key-bank">{item.bank}</span>
+                  <strong className="key-value">{item.value}</strong>
+                  <span className="key-type">{tipoChaveLabel[item.type] ?? item.type}</span>
                 </div>
 
                 <div className="key-actions">
                   <button
                     className="button button-secondary"
                     type="button"
-                    onClick={() => handleCopiarChave(item.id, item.valor)}
-                    aria-label={copiadoId === item.id ? 'Chave Pix copiada' : `Copiar chave Pix ${tipoChaveLabel[item.tipo] ?? item.tipo}`}
+                    onClick={() => handleCopiarChave(item.id, item.value)}
+                    aria-label={copiadoId === item.id ? 'Chave Pix copiada' : `Copiar chave Pix ${tipoChaveLabel[item.type] ?? item.type}`}
                   >
                     {copiadoId === item.id ? (
                       <><Check size={17} aria-hidden="true" /> Copiada</>
@@ -178,8 +211,8 @@ export function PixKeys() {
                   <button
                     className="button button-danger"
                     type="button"
-                    onClick={() => setChaves((atuais) => atuais.filter((chave) => chave.id !== item.id))}
-                    aria-label={`Excluir chave Pix ${tipoChaveLabel[item.tipo] ?? item.tipo}`}
+                    onClick={() => handleExcluirChave(item.id)}
+                    aria-label={`Excluir chave Pix ${tipoChaveLabel[item.type] ?? item.type}`}
                   >
                     <Trash2 size={17} aria-hidden="true" />
                     Excluir

@@ -1,7 +1,7 @@
 import { Download, Smartphone, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-export function InstallApp() {
+export function InstallApp({ placement = 'sidebar' }) {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(() => {
     const standalone = window.matchMedia('(display-mode: standalone)');
@@ -72,7 +72,11 @@ export function InstallApp() {
 
   return (
     <>
-      <button className="sidebar-install-button" type="button" onClick={handleInstall}>
+      <button
+        className={placement === 'auth' ? 'auth-install-button' : 'sidebar-install-button'}
+        type="button"
+        onClick={handleInstall}
+      >
         {isIOS ? (
           <Smartphone size={18} aria-hidden="true" />
         ) : (

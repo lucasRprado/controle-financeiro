@@ -1,10 +1,17 @@
-import { ArrowLeftRight, KeyRound, LayoutDashboard, Leaf, TrendingUp } from 'lucide-react';
+import { ArrowLeftRight, KeyRound, LayoutDashboard, LogOut, TrendingUp } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { useState } from 'react';
 import { BrowserRouter as Router, NavLink, Route, Routes } from 'react-router-dom';
+import { AuthScreen } from './components/AuthScreen';
 import { InstallApp } from './components/InstallApp';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { Custos } from './pages/Custos';
 import { Dashboard } from './pages/Dashboard';
 import { Investimentos } from './pages/Investimentos';
 import { PixKeys } from './pages/PixKeys';
+import { auth } from './services/firebase';
+import { firebaseErrorMessage } from './services/userData';
 
 const navigation = [
   { to: '/', label: 'Visão geral', Icon: LayoutDashboard, end: true },
@@ -13,53 +20,97 @@ const navigation = [
   { to: '/pix', label: 'Chaves Pix', Icon: KeyRound },
 ];
 
+function AuthenticatedApp({ user }) {
+  const [logoutError, setLogoutError] = useState('');
+
+  const handleLogout = async () => {
+    setLogoutError('');
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Não foi possível encerrar a sessão:', error);
+      setLogoutError(firebaseErrorMessage(error));
+    }
+  };
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <NavLink to="/" className="brand">
+          <img
+            className="brand-logo"
+            src="/solus_logo.jpg"
+            alt="Solus Creation Finances"
+            width="200"
+            height="130"
+          />
+        </NavLink>
+
+        <nav className="sidebar-nav" aria-label="Navegação principal">
+          {navigation.map(({ to, label, Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}
+            >
+              <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="account-panel">
+            <span className="account-email" title={user.email ?? 'Conta Google'}>
+              {user.email ?? 'Conta Google'}
+            </span>
+            <button className="sidebar-logout" type="button" onClick={handleLogout}>
+              <LogOut size={17} aria-hidden="true" />
+              Sair
+            </button>
+          </div>
+          {logoutError && <p className="sidebar-error" role="alert">{logoutError}</p>}
+          <InstallApp />
+          <p className="sidebar-note">Organize seu dinheiro com clareza.</p>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <div className="page-container">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/custos" element={<Custos />} />
+            <Route path="/investimentos" element={<Investimentos />} />
+            <Route path="/pix" element={<PixKeys />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function AppContent() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="auth-page">
+        <p className="auth-loading" role="status">Verificando sua sessão...</p>
+      </main>
+    );
+  }
+
+  return user ? <AuthenticatedApp user={user} /> : <AuthScreen />;
+}
+
 export function App() {
   return (
-    <Router>
-      <div className="app-shell">
-        <aside className="sidebar">
-          <NavLink to="/" className="brand">
-            <span className="brand-mark">
-              <Leaf size={22} strokeWidth={2} aria-hidden="true" />
-            </span>
-            <span className="brand-copy">
-              <strong>Finanças</strong>
-              <small>CONTROLE PESSOAL</small>
-            </span>
-          </NavLink>
-
-          <nav className="sidebar-nav" aria-label="Navegação principal">
-            {navigation.map(({ to, label, Icon, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}
-              >
-                <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
-                <span>{label}</span>
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="sidebar-bottom">
-            <InstallApp />
-            <p className="sidebar-note">Organize seu dinheiro com clareza.</p>
-          </div>
-        </aside>
-
-        <main className="main-content">
-          <div className="page-container">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/custos" element={<Custos />} />
-              <Route path="/investimentos" element={<Investimentos />} />
-              <Route path="/pix" element={<PixKeys />} />
-            </Routes>
-          </div>
-        </main>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }
 

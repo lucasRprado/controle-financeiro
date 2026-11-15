@@ -1,18 +1,29 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { useUserCollection } from '../hooks/useUserCollection';
+import { createUserRecord, firebaseErrorMessage, fromCents, toCents } from '../services/userData';
 
 const formatarMoeda = (valor) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
+const formatarData = (timestamp) => {
+  const data = timestamp?.toDate?.();
+  return data ? data.toLocaleDateString('pt-BR') : 'Salvando...';
+};
+
 export function Custos() {
-  const [transacoes, setTransacoes] = useState([]);
+  const { user } = useAuth();
+  const { documents: transacoes, loading, error: loadError } = useUserCollection('transactions');
   const [descricaoDespesa, setDescricaoDespesa] = useState('');
   const [valorDespesa, setValorDespesa] = useState('');
   const [categoriaDespesa, setCategoriaDespesa] = useState('Alimentação');
   const [descricaoReceita, setDescricaoReceita] = useState('');
   const [valorReceita, setValorReceita] = useState('');
+  const [writeError, setWriteError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const adicionarTransacao = (event, transacao, limparFormulario) => {
+  const adicionarTransacao = async (event, transacao, limparFormulario) => {
     event.preventDefault();
 
     const descricao = transacao.descricao.trim();
@@ -22,18 +33,22 @@ export function Custos() {
       return;
     }
 
-    setTransacoes((atuais) => [
-      {
-        id: Date.now().toString(),
-        descricao,
-        valor,
-        tipo: transacao.tipo,
-        categoria: transacao.categoria,
-        data: new Date().toLocaleDateString('pt-BR'),
-      },
-      ...atuais,
-    ]);
-    limparFormulario();
+    setWriteError('');
+    setIsSaving(true);
+    try {
+      await createUserRecord(user.uid, 'transactions', {
+        description: descricao,
+        amountCents: toCents(valor),
+        type: transacao.tipo,
+        ...(transacao.categoria ? { category: transacao.categoria } : {}),
+      });
+      limparFormulario();
+    } catch (error) {
+      console.error('Não foi possível salvar o lançamento:', error);
+      setWriteError(firebaseErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -45,6 +60,11 @@ export function Custos() {
           Registre entradas e gastos em espaços separados para manter seu orçamento organizado.
         </p>
       </header>
+
+      {(writeError || loadError) && (
+        <p className="feedback-error" role="alert">{writeError || loadError}</p>
+      )}
+      {loading && <p className="feedback-note" role="status">Carregando seus lançamentos...</p>}
 
       <div className="transaction-grid">
         <form
@@ -104,7 +124,11 @@ export function Custos() {
             </div>
           </div>
 
-          <button className="button button-primary form-submit" type="submit">
+          <button
+            className="button button-primary form-submit"
+            type="submit"
+            disabled={isSaving || loading || Boolean(loadError)}
+          >
             Adicionar receita
           </button>
         </form>
@@ -184,7 +208,11 @@ export function Custos() {
             </div>
           </div>
 
-          <button className="button button-expense form-submit" type="submit">
+          <button
+            className="button button-expense form-submit"
+            type="submit"
+            disabled={isSaving || loading || Boolean(loadError)}
+          >
             Adicionar despesa
           </button>
         </form>
@@ -199,14 +227,14 @@ export function Custos() {
             {transacoes.map((item) => (
               <li className="history-item" key={item.id}>
                 <div className="history-primary">
-                  <strong className="history-description">{item.descricao}</strong>
+                  <strong className="history-description">{item.description}</strong>
                   <div className="history-meta">
-                    {item.tipo === 'receita' ? 'Receita' : `Despesa · ${item.categoria}`}
+                    {item.type === 'receita' ? 'Receita' : `Despesa · ${item.category}`}
                   </div>
-                  <time className="history-date">{item.data}</time>
+                  <time className="history-date">{formatarData(item.createdAt)}</time>
                 </div>
-                <strong className={`history-amount ${item.tipo}`}>
-                  {item.tipo === 'receita' ? '+' : '−'} {formatarMoeda(item.valor)}
+                <strong className={`history-amount ${item.type}`}>
+                  {item.type === 'receita' ? '+' : '−'} {formatarMoeda(fromCents(item.amountCents))}
                 </strong>
               </li>
             ))}

@@ -1,30 +1,52 @@
 import { ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { useUserCollection } from '../hooks/useUserCollection';
+import { fromCents } from '../services/userData';
 
-const resumo = [
-  {
-    titulo: 'Receitas do mês',
-    valor: 'R$ 0,00',
-    observacao: 'Entradas registradas',
-    Icon: ArrowUpRight,
-    estilo: 'income',
-  },
-  {
-    titulo: 'Despesas do mês',
-    valor: 'R$ 0,00',
-    observacao: 'Saídas registradas',
-    Icon: ArrowDownRight,
-    estilo: 'expense',
-  },
-  {
-    titulo: 'Saldo atual',
-    valor: 'R$ 0,00',
-    observacao: 'Receitas menos despesas',
-    Icon: Wallet,
-    estilo: 'balance',
-  },
-];
+const formatarMoeda = (valor) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
 export function Dashboard() {
+  const { documents: transacoes, loading, error } = useUserCollection('transactions');
+  const [hoje] = useState(() => new Date());
+  const totais = transacoes.reduce((resultado, transacao) => {
+    const data = transacao.createdAt?.toDate?.();
+    if (!data || data.getMonth() !== hoje.getMonth() || data.getFullYear() !== hoje.getFullYear()) {
+      return resultado;
+    }
+
+    if (transacao.type === 'receita') {
+      resultado.receitas += fromCents(transacao.amountCents);
+    } else if (transacao.type === 'despesa') {
+      resultado.despesas += fromCents(transacao.amountCents);
+    }
+    return resultado;
+  }, { receitas: 0, despesas: 0 });
+
+  const resumo = [
+    {
+      titulo: 'Receitas do mês',
+      valor: formatarMoeda(totais.receitas),
+      observacao: 'Entradas registradas',
+      Icon: ArrowUpRight,
+      estilo: 'income',
+    },
+    {
+      titulo: 'Despesas do mês',
+      valor: formatarMoeda(totais.despesas),
+      observacao: 'Saídas registradas',
+      Icon: ArrowDownRight,
+      estilo: 'expense',
+    },
+    {
+      titulo: 'Saldo atual',
+      valor: formatarMoeda(totais.receitas - totais.despesas),
+      observacao: 'Receitas menos despesas',
+      Icon: Wallet,
+      estilo: 'balance',
+    },
+  ];
+
   return (
     <div>
       <header className="page-header">
@@ -34,6 +56,9 @@ export function Dashboard() {
           Acompanhe suas finanças com clareza e mantenha seus objetivos por perto.
         </p>
       </header>
+
+      {error && <p className="feedback-error" role="alert">{error}</p>}
+      {loading && <p className="feedback-note" role="status">Carregando seu resumo...</p>}
 
       <section className="dashboard-grid" aria-label="Resumo financeiro do mês">
         {resumo.map(({ titulo, valor, observacao, Icon, estilo }) => (
@@ -45,7 +70,7 @@ export function Dashboard() {
               </span>
             </div>
             <div>
-              <strong className="summary-value">{valor}</strong>
+              <strong className="summary-value">{loading ? '—' : valor}</strong>
               <span className="summary-note">{observacao}</span>
             </div>
           </article>
