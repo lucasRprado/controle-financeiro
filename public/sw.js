@@ -1,10 +1,13 @@
-const CACHE_NAME = 'financas-pwa-v2';
+const CACHE_NAME = 'financas-pwa-v3';
 const APP_SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
-  '/favicon.svg',
+  '/favicon.png',
+  '/solus_logo.jpg',
+  '/google_logo.svg',
   '/pwa-icon-192.png',
   '/pwa-icon-512.png',
+  '/pwa-icon-maskable-512.png',
   '/apple-touch-icon.png',
 ];
 
