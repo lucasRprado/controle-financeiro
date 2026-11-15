@@ -3,8 +3,9 @@
 ## Configuração do Firebase
 
 O aplicativo usa Firebase Authentication e Cloud Firestore. Os dados ficam em
-`users/{uid}` nas coleções `transactions`, `goals`, `assets`, `movements` e
-`pixKeys`; cada conta só pode acessar os próprios documentos.
+`users/{uid}` nas coleções `transactions`, `goals`, `assets`, `movements`,
+`pixKeys`, `expenseCategories` e `incomePresets`; cada conta só pode acessar os
+próprios documentos.
 
 1. No Firebase Console, habilite os provedores **E-mail/senha** e **Google** em
    Authentication e adicione os domínios de desenvolvimento e produção em
@@ -18,8 +19,10 @@ O aplicativo usa Firebase Authentication e Cloud Firestore. Os dados ficam em
    firebase deploy --only firestore:rules --project fin-app-a0b9c
    ```
 
-Os lançamentos, metas, investimentos, movimentações e chaves Pix são carregados e
-salvos por conta autenticada. O cache persistente do Firestore mantém os dados
+Os lançamentos, categorias de despesas, modelos de receita, metas, investimentos,
+movimentações e chaves Pix são carregados e salvos por conta autenticada. O
+dashboard apresenta uma comparação mensal de receitas e despesas e a distribuição
+das despesas por categoria. O cache persistente do Firestore mantém os dados
 disponíveis após recarregar e pode sincronizar alterações feitas sem conexão quando
 a internet voltar. As transferências de saldo exigem conexão para serem concluídas
 de forma atômica.
