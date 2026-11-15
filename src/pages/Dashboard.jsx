@@ -49,6 +49,7 @@ export function Dashboard() {
     opcoesMes.find((mes) => mes.value === mesSelecionado) ?? opcoesMes[opcoesMes.length - 1];
   const [anoMesSelecionado, numeroMesSelecionado] = mesAtual.value.split('-').map(Number);
   const meses = criarMeses(new Date(anoMesSelecionado, numeroMesSelecionado - 1, 1));
+  const filtroCategoriaAtivo = tipoGrafico === 'despesas';
 
   const categoriasRegistradas = [
     ...DEFAULT_EXPENSE_CATEGORIES,
@@ -75,6 +76,18 @@ export function Dashboard() {
     return a.localeCompare(b, 'pt-BR');
   });
   const todasCategoriasSelecionadas = categoriasSelecionadas === null;
+  const rotuloTipoGrafico = tipoGrafico === 'receitas' ? 'Receitas' : 'Despesas';
+  const rotuloModoGrafico = tipoGrafico === 'comparativo' ? 'Comparativo' : rotuloTipoGrafico;
+  const tituloGrafico =
+    tipoGrafico === 'comparativo' ? 'Receitas versus despesas' : `${rotuloTipoGrafico} por mês`;
+  const rotuloFiltroCategoria =
+    !filtroCategoriaAtivo || todasCategoriasSelecionadas
+      ? 'Todas as categorias'
+      : categoriasSelecionadas.length === 0
+        ? 'Nenhuma categoria selecionada'
+        : `${categoriasSelecionadas.length} ${
+          categoriasSelecionadas.length === 1 ? 'categoria selecionada' : 'categorias selecionadas'
+        }`;
 
   const alternarCategoria = (categoria, selecionada) => {
     if (todasCategoriasSelecionadas) {
@@ -124,7 +137,9 @@ export function Dashboard() {
         ? transacao.category.trim()
         : 'Sem categoria';
     const categoriaIncluida =
-      todasCategoriasSelecionadas || categoriasSelecionadas.includes(categoria);
+      !filtroCategoriaAtivo ||
+      todasCategoriasSelecionadas ||
+      categoriasSelecionadas.includes(categoria);
     if (totais) {
       totais.despesas += centavos;
       if (categoriaIncluida) {
@@ -147,21 +162,26 @@ export function Dashboard() {
     despesasFiltradas: 0,
   };
   const saldoTotal = totaisSelecionados.receitas - totaisSelecionados.despesas;
-  const obterValorDoGrafico = (mes) =>
-    tipoGrafico === 'receitas' ? mes.receitas : mes.despesasFiltradas;
+  const seriesGrafico = tipoGrafico === 'comparativo'
+    ? [
+      { chave: 'receitas', label: 'Receitas', estilo: 'income' },
+      { chave: 'despesasFiltradas', label: 'Despesas', estilo: 'expense' },
+    ]
+    : [{
+      chave: tipoGrafico === 'receitas' ? 'receitas' : 'despesasFiltradas',
+      label: rotuloTipoGrafico,
+      estilo: tipoGrafico === 'receitas' ? 'income' : 'expense',
+    }];
+  const obterValorDoGrafico = (mes, serie) => mes[serie.chave];
   const maiorBarra = Math.max(
     1,
-    ...dadosMensais.map(obterValorDoGrafico),
+    ...dadosMensais.flatMap((mes) =>
+      seriesGrafico.map((serie) => obterValorDoGrafico(mes, serie)),
+    ),
   );
-  const temDadosMensais = dadosMensais.some((mes) => obterValorDoGrafico(mes) > 0);
-  const rotuloTipoGrafico = tipoGrafico === 'receitas' ? 'Receitas' : 'Despesas';
-  const rotuloFiltroCategoria = todasCategoriasSelecionadas
-    ? 'Todas as categorias'
-    : categoriasSelecionadas.length === 0
-      ? 'Nenhuma categoria selecionada'
-      : `${categoriasSelecionadas.length} ${
-        categoriasSelecionadas.length === 1 ? 'categoria selecionada' : 'categorias selecionadas'
-      }`;
+  const temDadosMensais = dadosMensais.some((mes) =>
+    seriesGrafico.some((serie) => obterValorDoGrafico(mes, serie) > 0),
+  );
   const distribuicaoCategorias = [...totaisPorCategoria.entries()]
     .map(([nome, valor], index) => ({
       nome,
@@ -197,9 +217,11 @@ export function Dashboard() {
       estilo: 'income',
     },
     {
-      titulo: 'Despesas no filtro',
+      titulo: filtroCategoriaAtivo ? 'Despesas no filtro' : 'Despesas do mês',
       valor: formatarCentavos(totaisSelecionados.despesasFiltradas),
-      observacao: `${rotuloFiltroCategoria} · ${mesAtual.label}`,
+      observacao: filtroCategoriaAtivo
+        ? `${rotuloFiltroCategoria} · ${mesAtual.label}`
+        : `Todas as categorias · ${mesAtual.label}`,
       Icon: ArrowDownRight,
       estilo: 'expense',
     },
@@ -229,7 +251,9 @@ export function Dashboard() {
         <div>
           <h2 className="section-title" id="dashboard-filters-title">Filtros do dashboard</h2>
           <p className="section-description">
-            Escolha o mês de referência, o tipo de gráfico e uma ou mais categorias de despesas.
+            {filtroCategoriaAtivo
+              ? 'Escolha o mês, o tipo de gráfico e as categorias de despesas.'
+              : 'Escolha o mês e o tipo de gráfico. O filtro por categoria aparece no modo Despesas.'}
           </p>
         </div>
         <div className="dashboard-filter-controls">
@@ -252,6 +276,7 @@ export function Dashboard() {
               {[
                 { value: 'receitas', label: 'Receitas' },
                 { value: 'despesas', label: 'Despesas' },
+                { value: 'comparativo', label: 'Comparativo' },
               ].map((tipo) => (
                 <label
                   className={`chart-type-option${tipoGrafico === tipo.value ? ' is-selected' : ''}`}
@@ -270,40 +295,42 @@ export function Dashboard() {
             </div>
           </fieldset>
         </div>
-        <fieldset className="expense-category-filter">
-          <legend className="form-label">Categorias de despesas</legend>
-          <p className="category-filter-help">
-            Todas começam marcadas. Desmarque as que deseja excluir; o gráfico de receitas não é afetado.
-          </p>
-          <div className="category-checkbox-grid">
-            <label className="category-checkbox">
-              <input
-                type="checkbox"
-                checked={todasCategoriasSelecionadas}
-                onChange={(event) => selecionarTodasCategorias(event.target.checked)}
-              />
-              <span>Todas as categorias</span>
-            </label>
-            {categorias.map((categoria) => (
-              <label className="category-checkbox" key={categoria}>
+        {filtroCategoriaAtivo && (
+          <fieldset className="expense-category-filter">
+            <legend className="form-label">Categorias de despesas</legend>
+            <p className="category-filter-help">
+              Todas começam marcadas. Desmarque “Todas as categorias” para escolher itens específicos ou desmarque categorias que deseja excluir.
+            </p>
+            <div className="category-checkbox-grid">
+              <label className="category-checkbox">
                 <input
                   type="checkbox"
-                  checked={
-                    todasCategoriasSelecionadas ||
-                    categoriasSelecionadas.includes(categoria)
-                  }
-                  onChange={(event) => alternarCategoria(categoria, event.target.checked)}
+                  checked={todasCategoriasSelecionadas}
+                  onChange={(event) => selecionarTodasCategorias(event.target.checked)}
                 />
-                <span>{categoria}</span>
+                <span>Todas as categorias</span>
               </label>
-            ))}
-          </div>
-        </fieldset>
+              {categorias.map((categoria) => (
+                <label className="category-checkbox" key={categoria}>
+                  <input
+                    type="checkbox"
+                    checked={
+                      todasCategoriasSelecionadas ||
+                      categoriasSelecionadas.includes(categoria)
+                    }
+                    onChange={(event) => alternarCategoria(categoria, event.target.checked)}
+                  />
+                  <span>{categoria}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
         <p className="dashboard-filter-note">
-          O saldo considera todas as receitas e despesas do mês, mesmo quando o gráfico está filtrado.
+          O filtro por categoria só se aplica no modo Despesas. O saldo sempre considera todas as movimentações do mês.
         </p>
         <p className="dashboard-print-context print-only">
-          Mês: {mesAtual.label} · Gráfico: {rotuloTipoGrafico} · Categorias: {rotuloFiltroCategoria}
+          Mês: {mesAtual.label} · Gráfico: {rotuloModoGrafico} · Categorias: {rotuloFiltroCategoria}
         </p>
       </section>
 
@@ -327,18 +354,23 @@ export function Dashboard() {
       <section className="insights-grid" aria-label="Gráficos financeiros">
         <article className="surface-card insight-card" aria-labelledby="cashflow-title">
           <div className="insight-heading">
-            <h2 className="section-title" id="cashflow-title">{rotuloTipoGrafico} por mês</h2>
+            <h2 className="section-title" id="cashflow-title">{tituloGrafico}</h2>
             <p className="section-description">
-              Valores mensais dos seis meses até {mesAtual.label}.
+              {tipoGrafico === 'comparativo'
+                ? `Compare receitas e despesas nos seis meses até ${mesAtual.label}.`
+                : `${rotuloTipoGrafico} mensais nos seis meses até ${mesAtual.label}.`}
             </p>
           </div>
           <div className="chart-legend" aria-hidden="true">
-            <span>
-              <i className={`legend-swatch ${tipoGrafico === 'receitas' ? 'income' : 'expense'}`} />
-              {tipoGrafico === 'receitas'
-                ? 'Receitas mensais'
-                : `Despesas · ${rotuloFiltroCategoria}`}
-            </span>
+            {seriesGrafico.map((serie) => (
+              <span key={serie.chave}>
+                <i className={`legend-swatch ${serie.estilo}`} />
+                {serie.label}
+                {serie.label === 'Despesas' && filtroCategoriaAtivo
+                  ? ` · ${rotuloFiltroCategoria}`
+                  : ''}
+              </span>
+            ))}
           </div>
           {loading || error ? (
             <p className="empty-state chart-empty-state" role={loading ? 'status' : undefined}>
@@ -347,25 +379,41 @@ export function Dashboard() {
           ) : temDadosMensais ? (
             <>
               <div
-                className="cashflow-chart"
+                className={`cashflow-chart${tipoGrafico === 'comparativo' ? ' is-comparative' : ''}`}
                 role="list"
-                aria-label={`${rotuloTipoGrafico} por mês`}
+                aria-label={
+                  tipoGrafico === 'comparativo'
+                    ? 'Comparativo mensal de receitas e despesas'
+                    : `${rotuloTipoGrafico} por mês`
+                }
               >
                 {dadosMensais.map((mes) => {
-                  const valor = obterValorDoGrafico(mes);
-                  const altura = valor ? Math.max(4, (valor / maiorBarra) * 145) : 0;
+                  const valores = seriesGrafico.map((serie) => ({
+                    ...serie,
+                    valor: obterValorDoGrafico(mes, serie),
+                  }));
                   return (
                     <div
                       className="cashflow-month"
                       role="listitem"
-                      aria-label={`${mes.label}: ${rotuloTipoGrafico.toLowerCase()} ${formatarCentavos(valor)}`}
+                      aria-label={`${mes.label}: ${valores
+                        .map(({ label, valor }) => `${label.toLowerCase()} ${formatarCentavos(valor)}`)
+                        .join(', ')}`}
                       key={mes.value}
                     >
                       <div className="cashflow-bars" aria-hidden="true">
-                        <span
-                          className={`cashflow-bar ${tipoGrafico === 'receitas' ? 'income' : 'expense'}`}
-                          style={{ height: `${altura}px` }}
-                        />
+                        {valores.map((serie) => {
+                          const altura = serie.valor
+                            ? Math.max(4, (serie.valor / maiorBarra) * 145)
+                            : 0;
+                          return (
+                            <span
+                              className={`cashflow-bar ${serie.estilo}`}
+                              style={{ height: `${altura}px` }}
+                              key={serie.chave}
+                            />
+                          );
+                        })}
                       </div>
                       <span className="cashflow-month-label">{mes.shortLabel}</span>
                     </div>
@@ -373,18 +421,24 @@ export function Dashboard() {
                 })}
               </div>
               <table className="monthly-data-table print-only">
-                <caption>{rotuloTipoGrafico} dos últimos seis meses</caption>
+                <caption>{tituloGrafico} dos últimos seis meses</caption>
                 <thead>
                   <tr>
                     <th scope="col">Mês</th>
-                    <th scope="col">{rotuloTipoGrafico}</th>
+                    {seriesGrafico.map((serie) => (
+                      <th scope="col" key={serie.chave}>{serie.label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {dadosMensais.map((mes) => (
                     <tr key={mes.value}>
                       <th scope="row">{mes.label}</th>
-                      <td>{formatarCentavos(obterValorDoGrafico(mes))}</td>
+                      {seriesGrafico.map((serie) => (
+                        <td key={serie.chave}>
+                          {formatarCentavos(obterValorDoGrafico(mes, serie))}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -392,7 +446,11 @@ export function Dashboard() {
             </>
           ) : (
             <p className="empty-state chart-empty-state">
-              Ainda não há lançamentos nos últimos seis meses para este filtro.
+              {tipoGrafico === 'despesas' && categoriasSelecionadas?.length === 0
+                ? 'Selecione ao menos uma categoria para visualizar as despesas.'
+                : tipoGrafico === 'comparativo'
+                  ? 'Ainda não há receitas ou despesas nos últimos seis meses.'
+                  : `Ainda não há lançamentos nos últimos seis meses para ${rotuloTipoGrafico.toLowerCase()}.`}
             </p>
           )}
         </article>

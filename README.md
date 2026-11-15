@@ -21,9 +21,10 @@ próprios documentos.
 
 Os lançamentos, categorias de despesas, modelos de receita, metas, investimentos,
 movimentações e chaves Pix são carregados e salvos por conta autenticada. O
-dashboard permite alternar o gráfico mensal entre receitas e despesas, filtrar
-despesas por várias categorias e consultar sua distribuição por categoria. O cache
-persistente do Firestore mantém os dados
+dashboard permite alternar o gráfico mensal entre receitas, despesas e o modo
+comparativo, além de filtrar despesas por várias categorias e consultar sua
+distribuição por categoria. O filtro de categorias aparece somente no modo de
+despesas. O cache persistente do Firestore mantém os dados
 disponíveis após recarregar e pode sincronizar alterações feitas sem conexão quando
 a internet voltar. As transferências de saldo exigem conexão para serem concluídas
 de forma atômica.

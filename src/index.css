@@ -390,7 +390,7 @@ select:focus-visible {
 
 .chart-type-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -541,6 +541,14 @@ select:focus-visible {
   width: clamp(10px, 2.1vw, 20px);
   flex: 0 0 auto;
   border-radius: 5px 5px 1px 1px;
+}
+
+.cashflow-chart:not(.is-comparative) .cashflow-bar {
+  width: clamp(18px, 4vw, 34px);
+}
+
+.cashflow-chart.is-comparative .cashflow-bar {
+  width: clamp(10px, 2.1vw, 20px);
 }
 
 .cashflow-bar.income {
@@ -1285,6 +1293,14 @@ select:focus-visible {
   .category-chart-content {
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
+  }
+
+  .chart-type-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chart-type-option:last-child {
+    grid-column: 1 / -1;
   }
 
   .category-legend {
