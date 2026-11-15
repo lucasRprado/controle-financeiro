@@ -54,6 +54,7 @@ function AuthenticatedApp({ user }) {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
       <aside className="sidebar">
         <NavLink to="/" className="brand">
           <img
@@ -95,7 +96,7 @@ function AuthenticatedApp({ user }) {
         </div>
       </aside>
 
-      <main className="main-content">
+      <main className="main-content" id="main-content">
         <div className="page-container">
           <div className="page-toolbar print-hidden">
             <button

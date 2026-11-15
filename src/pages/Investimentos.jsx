@@ -2,6 +2,7 @@ import {
   ArrowDownRight,
   ArrowLeftRight,
   ArrowUpRight,
+  ChevronDown,
   PiggyBank,
   Pencil,
   Target,
@@ -459,32 +460,33 @@ export function Investimentos() {
             <p className="summary-label">Guardado em metas</p>
             <span className="summary-icon balance"><Target size={20} aria-hidden="true" /></span>
           </div>
-          <strong className="summary-value">{formatarMoeda(totalMetas)}</strong>
+          <strong className="summary-value">{loading || dataError ? '—' : formatarMoeda(totalMetas)}</strong>
         </article>
         <article className="summary-card">
           <div className="summary-card-top">
             <p className="summary-label">Em investimentos e ativos</p>
             <span className="summary-icon income"><PiggyBank size={20} aria-hidden="true" /></span>
           </div>
-          <strong className="summary-value">{formatarMoeda(totalAtivos)}</strong>
+          <strong className="summary-value">{loading || dataError ? '—' : formatarMoeda(totalAtivos)}</strong>
         </article>
         <article className="summary-card">
           <div className="summary-card-top">
             <p className="summary-label">Total acompanhado</p>
             <span className="summary-icon expense"><Wallet size={20} aria-hidden="true" /></span>
           </div>
-          <strong className="summary-value">{formatarMoeda(totalAcompanhado)}</strong>
+          <strong className="summary-value">{loading || dataError ? '—' : formatarMoeda(totalAcompanhado)}</strong>
         </article>
       </section>
 
-      <section className="surface-card investment-section print-hidden" aria-labelledby="nova-meta-title">
-        <div className="section-heading">
+      <details className="surface-card investment-section investment-action print-hidden">
+        <summary className="section-heading investment-action-summary">
           <span className="section-icon balance"><Target size={21} aria-hidden="true" /></span>
           <div>
             <h2 className="section-title" id="nova-meta-title">Criar nova meta</h2>
             <p className="section-description">Dê um nome e defina quanto deseja juntar.</p>
           </div>
-        </div>
+          <ChevronDown className="investment-action-chevron" size={19} aria-hidden="true" />
+        </summary>
 
         <form className="investment-form-grid" onSubmit={handleCriarMeta}>
           <div className="form-field">
@@ -521,16 +523,17 @@ export function Investimentos() {
             Criar meta
           </button>
         </form>
-      </section>
+      </details>
 
-      <section className="surface-card investment-section print-hidden" aria-labelledby="aporte-title">
-        <div className="section-heading">
+      <details className="surface-card investment-section investment-action print-hidden">
+        <summary className="section-heading investment-action-summary">
           <span className="section-icon income"><ArrowUpRight size={21} aria-hidden="true" /></span>
           <div>
             <h2 className="section-title" id="aporte-title">Registrar aporte</h2>
             <p className="section-description">Adicione um aporte a uma meta ou investimento existente.</p>
           </div>
-        </div>
+          <ChevronDown className="investment-action-chevron" size={19} aria-hidden="true" />
+        </summary>
 
         <form className="investment-form-grid" onSubmit={handleFazerAporte}>
           <div className="form-field">
@@ -587,16 +590,17 @@ export function Investimentos() {
             Registrar aporte
           </button>
         </form>
-      </section>
+      </details>
 
-      <section className="surface-card investment-section print-hidden" aria-labelledby="transferir-title">
-        <div className="section-heading">
+      <details className="surface-card investment-section investment-action print-hidden">
+        <summary className="section-heading investment-action-summary">
           <span className="section-icon balance"><ArrowLeftRight size={21} aria-hidden="true" /></span>
           <div>
             <h2 className="section-title" id="transferir-title">Transferir entre recursos</h2>
             <p className="section-description">Mova saldo entre metas e investimentos ou crie um novo destino.</p>
           </div>
-        </div>
+          <ChevronDown className="investment-action-chevron" size={19} aria-hidden="true" />
+        </summary>
 
         <form className="investment-form-grid" onSubmit={handleTransferirSaldo}>
           <div className="form-field">
@@ -674,16 +678,17 @@ export function Investimentos() {
             Transferir saldo
           </button>
         </form>
-      </section>
+      </details>
 
-      <section className="surface-card investment-section print-hidden" aria-labelledby="utilizar-title">
-        <div className="section-heading">
+      <details className="surface-card investment-section investment-action print-hidden">
+        <summary className="section-heading investment-action-summary">
           <span className="section-icon expense"><ArrowDownRight size={21} aria-hidden="true" /></span>
           <div>
             <h2 className="section-title" id="utilizar-title">Utilizar saldo guardado</h2>
             <p className="section-description">O valor escolhido será descontado do recurso, sem criar uma despesa.</p>
           </div>
-        </div>
+          <ChevronDown className="investment-action-chevron" size={19} aria-hidden="true" />
+        </summary>
 
         <form className="investment-form-grid" onSubmit={handleUtilizarSaldo}>
           <div className="form-field">
@@ -726,7 +731,7 @@ export function Investimentos() {
             Utilizar saldo
           </button>
         </form>
-      </section>
+      </details>
 
       <section className="surface-card investment-section" aria-labelledby="metas-title">
         <h2 className="section-title" id="metas-title">Metas e recursos</h2>

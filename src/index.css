@@ -23,6 +23,12 @@
   --color-expense: #715c3c;
   --shadow-card: 0 10px 28px rgba(49, 63, 49, 0.06);
   --radius-card: 18px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
 }
 
 * {
@@ -34,6 +40,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background: var(--color-canvas);
+  line-height: 1.5;
 }
 
 button,
@@ -61,6 +68,25 @@ select:focus-visible {
   min-height: 100vh;
 }
 
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  padding: 10px 14px;
+  color: #fffefa;
+  background: var(--color-forest);
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 650;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .app-shell {
   display: flex;
   min-height: 100vh;
@@ -78,6 +104,7 @@ select:focus-visible {
   padding: 30px 18px 22px;
   color: #f8f6ee;
   background: #294737;
+  box-shadow: 5px 0 22px rgba(29, 49, 36, 0.06);
 }
 
 .brand {
@@ -218,6 +245,7 @@ select:focus-visible {
 }
 
 .page-container {
+  position: relative;
   width: min(100%, 1080px);
   margin: 0 auto;
 }
@@ -225,7 +253,10 @@ select:focus-visible {
 .page-toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 16px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
 }
 
 .print-only {
@@ -233,7 +264,8 @@ select:focus-visible {
 }
 
 .page-header {
-  margin-bottom: 30px;
+  margin-bottom: 26px;
+  padding-right: 168px;
 }
 
 .page-kicker {
@@ -280,7 +312,7 @@ select:focus-visible {
 .form-card,
 .history-card {
   min-width: 0;
-  padding: 24px;
+  padding: clamp(20px, 2.2vw, 26px);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -290,7 +322,7 @@ select:focus-visible {
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .summary-card {
@@ -651,8 +683,8 @@ select:focus-visible {
 .transaction-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin: 28px 0;
+  gap: 16px;
+  margin: 24px 0;
 }
 
 .form-card {
@@ -874,7 +906,7 @@ select:focus-visible {
 .goal-list,
 .pix-key-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   margin: 18px 0 0;
   padding: 0;
   list-style: none;
@@ -946,6 +978,44 @@ select:focus-visible {
   margin-bottom: 22px;
 }
 
+.investment-action-summary {
+  min-width: 0;
+  margin: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.investment-action-summary::-webkit-details-marker {
+  display: none;
+}
+
+.investment-action-summary > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.investment-action-chevron {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  transition: transform 160ms ease;
+}
+
+.investment-action[open] .investment-action-summary {
+  margin-bottom: 22px;
+}
+
+.investment-action[open] .investment-action-chevron {
+  transform: rotate(180deg);
+}
+
+.investment-action-summary:focus-visible {
+  border-radius: 10px;
+}
+
+.investment-action-summary:hover .section-title {
+  color: var(--color-forest);
+}
+
 .goal-form-grid,
 .contribution-form-grid {
   display: grid;
@@ -971,7 +1041,7 @@ select:focus-visible {
 }
 
 .investment-section {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .resource-actions {
@@ -1110,7 +1180,7 @@ select:focus-visible {
 
 .pix-form-card,
 .pix-list-card {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .key-bank {
@@ -1142,12 +1212,12 @@ select:focus-visible {
 
 @media (max-width: 900px) {
   .sidebar {
-    flex-basis: 228px;
-    width: 228px;
+    flex-basis: 224px;
+    width: 224px;
   }
 
   .main-content {
-    padding: 30px 24px;
+    padding: 28px 22px;
   }
 
   .dashboard-grid {
@@ -1181,29 +1251,38 @@ select:focus-visible {
   }
 
   .sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     width: 100%;
     min-height: auto;
     padding:
-      max(14px, env(safe-area-inset-top))
-      max(16px, env(safe-area-inset-right))
-      14px
-      max(16px, env(safe-area-inset-left));
+      max(10px, env(safe-area-inset-top))
+      max(14px, env(safe-area-inset-right))
+      10px
+      max(14px, env(safe-area-inset-left));
   }
 
   .brand {
     justify-content: flex-start;
-    margin: 0 0 14px;
+    min-width: 0;
+    margin: 0;
   }
 
   .brand-logo {
-    width: 132px;
-    height: 86px;
+    width: 100px;
+    height: 65px;
   }
 
   .sidebar-nav {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    grid-column: 1 / -1;
+    gap: 5px 7px;
+    margin-top: 8px;
   }
 
   .nav-link {
@@ -1211,6 +1290,7 @@ select:focus-visible {
     gap: 8px;
     padding: 0 10px;
     font-size: 0.82rem;
+    line-height: 1.2;
   }
 
   .nav-link svg {
@@ -1224,15 +1304,71 @@ select:focus-visible {
   }
 
   .sidebar-bottom {
-    margin-top: 12px;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin: 0;
+  }
+
+  .account-panel {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .account-email {
+    display: none;
+  }
+
+  .sidebar-logout {
+    min-height: 40px;
+    padding: 7px 9px;
+  }
+
+  .sidebar-install-button {
+    width: auto;
+    min-height: 40px;
+    gap: 7px;
+    padding: 7px 9px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .sidebar-error {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 12px;
+    left: 12px;
+    z-index: 2;
+    box-shadow: var(--shadow-card);
   }
 
   .main-content {
     padding:
-      26px
+      22px
       max(16px, env(safe-area-inset-right))
       calc(36px + env(safe-area-inset-bottom))
       max(16px, env(safe-area-inset-left));
+  }
+
+  .page-toolbar {
+    position: static;
+    justify-content: flex-end;
+    margin-bottom: 14px;
+  }
+
+  .page-header {
+    margin-bottom: 22px;
+    padding-right: 0;
+  }
+
+  .page-description {
+    margin-top: 8px;
+    font-size: 0.93rem;
   }
 
   .transaction-grid,
@@ -1279,7 +1415,7 @@ select:focus-visible {
   .summary-card,
   .form-card,
   .history-card {
-    padding: 18px;
+    padding: 18px 16px;
   }
 
   .finance-option-input-row {
@@ -1704,9 +1840,14 @@ select:focus-visible {
 }
 
 .feedback-note {
-  margin: -12px 0 18px;
+  margin: 0 0 16px;
+  padding: 10px 13px;
   color: var(--color-muted);
   font-size: 0.88rem;
+  background: var(--color-sage-soft);
+  border: 1px solid #d5e0d2;
+  border-radius: 10px;
+  line-height: 1.45;
 }
 
 @media (max-width: 680px) {
