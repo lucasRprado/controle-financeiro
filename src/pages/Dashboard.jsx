@@ -271,6 +271,7 @@ export function Dashboard() {
               {loading ? 'Carregando dados do gráfico...' : 'Não foi possível carregar este gráfico.'}
             </p>
           ) : temDadosMensais ? (
+            <>
             <div className="cashflow-chart" role="list" aria-label="Comparativo de receitas e despesas por mês">
               {dadosMensais.map((mes) => {
                 const alturaReceita = mes.receitas
@@ -295,6 +296,30 @@ export function Dashboard() {
                 );
               })}
             </div>
+            <table className="monthly-data-table print-only">
+              <caption>Valores mensais do comparativo</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Mês</th>
+                  <th scope="col">Receitas</th>
+                  <th scope="col">
+                    {categoriaSelecionada === ALL_CATEGORIES_VALUE
+                      ? 'Despesas'
+                      : `Despesas · ${categoriaSelecionada}`}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {dadosMensais.map((mes) => (
+                  <tr key={mes.value}>
+                    <th scope="row">{mes.label}</th>
+                    <td>{formatarCentavos(mes.receitas)}</td>
+                    <td>{formatarCentavos(mes.despesasFiltradas)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </>
           ) : (
             <p className="empty-state chart-empty-state">
               Ainda não há lançamentos nos últimos seis meses para este filtro.

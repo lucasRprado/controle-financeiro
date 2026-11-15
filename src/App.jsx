@@ -1,7 +1,14 @@
-import { ArrowLeftRight, KeyRound, LayoutDashboard, LogOut, TrendingUp } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  FileDown,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  TrendingUp,
+} from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { useState } from 'react';
-import { BrowserRouter as Router, NavLink, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthScreen } from './components/AuthScreen';
 import { InstallApp } from './components/InstallApp';
 import { AuthProvider } from './contexts/AuthContext';
@@ -22,6 +29,18 @@ const navigation = [
 
 function AuthenticatedApp({ user }) {
   const [logoutError, setLogoutError] = useState('');
+  const location = useLocation();
+
+  const handleExportPdf = () => {
+    if (
+      location.pathname === '/pix' &&
+      !window.confirm('O PDF desta página incluirá suas chaves Pix completas. Deseja continuar?')
+    ) {
+      return;
+    }
+
+    window.print();
+  };
 
   const handleLogout = async () => {
     setLogoutError('');
@@ -78,6 +97,17 @@ function AuthenticatedApp({ user }) {
 
       <main className="main-content">
         <div className="page-container">
+          <div className="page-toolbar print-hidden">
+            <button
+              className="button button-secondary"
+              type="button"
+              title="Na próxima tela, escolha salvar como PDF ou compartilhar."
+              onClick={handleExportPdf}
+            >
+              <FileDown size={18} aria-hidden="true" />
+              Exportar PDF
+            </button>
+          </div>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/custos" element={<Custos />} />

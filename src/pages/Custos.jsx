@@ -181,7 +181,7 @@ export function Custos() {
       )}
       {loading && <p className="feedback-note" role="status">Carregando seus lançamentos...</p>}
 
-      <div className="transaction-grid">
+      <div className="transaction-grid print-hidden">
         <form
           className="form-card"
           onSubmit={(event) =>
@@ -351,7 +351,7 @@ export function Custos() {
         </form>
       </div>
 
-      <section className="surface-card finance-options-card" aria-labelledby="finance-options-title">
+      <section className="surface-card finance-options-card print-hidden" aria-labelledby="finance-options-title">
         <div className="finance-options-heading">
           <h2 className="section-title" id="finance-options-title">Personalizar lançamentos</h2>
           <p className="section-description">

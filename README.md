@@ -27,6 +27,13 @@ disponíveis após recarregar e pode sincronizar alterações feitas sem conexã
 a internet voltar. As transferências de saldo exigem conexão para serem concluídas
 de forma atômica.
 
+## Exportar uma página em PDF
+
+Em qualquer página autenticada, use **Exportar PDF**. Na janela do navegador ou
+do dispositivo, escolha salvar como PDF ou compartilhar. O arquivo contém os
+dados da página aberta, sem os formulários de edição. Na página de chaves Pix, o
+aplicativo pede confirmação porque o PDF inclui as chaves completas.
+
 ## Desenvolvimento
 
 Execute `npm install` e depois `npm run dev`.

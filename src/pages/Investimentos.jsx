@@ -477,7 +477,7 @@ export function Investimentos() {
         </article>
       </section>
 
-      <section className="surface-card investment-section" aria-labelledby="nova-meta-title">
+      <section className="surface-card investment-section print-hidden" aria-labelledby="nova-meta-title">
         <div className="section-heading">
           <span className="section-icon balance"><Target size={21} aria-hidden="true" /></span>
           <div>
@@ -523,7 +523,7 @@ export function Investimentos() {
         </form>
       </section>
 
-      <section className="surface-card investment-section" aria-labelledby="aporte-title">
+      <section className="surface-card investment-section print-hidden" aria-labelledby="aporte-title">
         <div className="section-heading">
           <span className="section-icon income"><ArrowUpRight size={21} aria-hidden="true" /></span>
           <div>
@@ -589,7 +589,7 @@ export function Investimentos() {
         </form>
       </section>
 
-      <section className="surface-card investment-section" aria-labelledby="transferir-title">
+      <section className="surface-card investment-section print-hidden" aria-labelledby="transferir-title">
         <div className="section-heading">
           <span className="section-icon balance"><ArrowLeftRight size={21} aria-hidden="true" /></span>
           <div>
@@ -676,7 +676,7 @@ export function Investimentos() {
         </form>
       </section>
 
-      <section className="surface-card investment-section" aria-labelledby="utilizar-title">
+      <section className="surface-card investment-section print-hidden" aria-labelledby="utilizar-title">
         <div className="section-heading">
           <span className="section-icon expense"><ArrowDownRight size={21} aria-hidden="true" /></span>
           <div>

@@ -222,6 +222,16 @@ select:focus-visible {
   margin: 0 auto;
 }
 
+.page-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.print-only {
+  display: none;
+}
+
 .page-header {
   margin-bottom: 30px;
 }
@@ -1205,6 +1215,164 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@page {
+  margin: 14mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    color: #202820 !important;
+    background: #fff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .app-shell {
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  .sidebar,
+  .print-hidden,
+  .feedback-error,
+  .feedback-note,
+  .resource-actions,
+  .resource-edit-form,
+  .resource-note,
+  .key-actions,
+  .pix-form-card,
+  button {
+    display: none !important;
+  }
+
+  .main-content {
+    width: 100%;
+    min-width: 0;
+    padding: 0 !important;
+  }
+
+  .page-container {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .page-header {
+    margin-bottom: 18px;
+    break-after: avoid-page;
+  }
+
+  .page-title {
+    font-size: 24pt;
+  }
+
+  .page-description,
+  .section-description,
+  .summary-note,
+  .history-meta,
+  .history-date,
+  .goal-amounts,
+  .movement-copy time {
+    color: #404840 !important;
+  }
+
+  .surface-card,
+  .history-card,
+  .form-card {
+    background: #fff !important;
+    border-color: #c9cec7 !important;
+    box-shadow: none !important;
+  }
+
+  .summary-card {
+    break-inside: avoid-page;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .dashboard-grid .summary-card:last-child {
+    grid-column: auto;
+  }
+
+  .insights-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 12px;
+  }
+
+  .category-chart-content {
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .category-donut {
+    width: 130px;
+  }
+
+  .category-donut::before {
+    inset: 23px;
+  }
+
+  .history-item,
+  .goal-card,
+  .pix-key-item,
+  .movement-item,
+  .category-legend-item,
+  .cashflow-chart {
+    break-inside: avoid-page;
+  }
+
+  .print-only {
+    display: table !important;
+  }
+
+  .monthly-data-table {
+    width: 100%;
+    margin-top: 12px;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+
+  .monthly-data-table caption {
+    margin-bottom: 6px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .monthly-data-table th,
+  .monthly-data-table td {
+    padding: 6px 8px;
+    border: 1px solid #c9cec7;
+    text-align: right;
+  }
+
+  .monthly-data-table th:first-child,
+  .monthly-data-table td:first-child {
+    text-align: left;
+  }
+
+  .monthly-data-table thead {
+    display: table-header-group;
+  }
+
+  .monthly-data-table tr {
+    break-inside: avoid-page;
+  }
+
+  .cashflow-bars,
+  .cashflow-month-label,
+  .legend-swatch {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }
 
