@@ -1,6 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
 import { useState } from 'react';
-import { ALL_CATEGORIES_VALUE, DEFAULT_EXPENSE_CATEGORIES } from '../constants/finance';
+import { DEFAULT_EXPENSE_CATEGORIES } from '../constants/finance';
 import { useUserCollection } from '../hooks/useUserCollection';
 import { fromCents } from '../services/userData';
 
@@ -37,12 +37,18 @@ export function Dashboard() {
   const transacoesState = useUserCollection('transactions');
   const categoriasState = useUserCollection('expenseCategories');
   const transacoes = transacoesState.documents;
-  const [meses] = useState(() => criarMeses(new Date()));
-  const [mesSelecionado, setMesSelecionado] = useState(() => meses[meses.length - 1].value);
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState(ALL_CATEGORIES_VALUE);
+  const [opcoesMes] = useState(() => criarMeses(new Date()));
+  const [mesSelecionado, setMesSelecionado] = useState(
+    () => opcoesMes[opcoesMes.length - 1].value,
+  );
+  const [tipoGrafico, setTipoGrafico] = useState('despesas');
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState(null);
   const loading = transacoesState.loading || categoriasState.loading;
   const error = transacoesState.error || categoriasState.error;
-  const mesAtual = meses.find((mes) => mes.value === mesSelecionado) ?? meses[meses.length - 1];
+  const mesAtual =
+    opcoesMes.find((mes) => mes.value === mesSelecionado) ?? opcoesMes[opcoesMes.length - 1];
+  const [anoMesSelecionado, numeroMesSelecionado] = mesAtual.value.split('-').map(Number);
+  const meses = criarMeses(new Date(anoMesSelecionado, numeroMesSelecionado - 1, 1));
 
   const categoriasRegistradas = [
     ...DEFAULT_EXPENSE_CATEGORIES,
@@ -68,6 +74,28 @@ export function Dashboard() {
     if (bDefault) return 1;
     return a.localeCompare(b, 'pt-BR');
   });
+  const todasCategoriasSelecionadas = categoriasSelecionadas === null;
+
+  const alternarCategoria = (categoria, selecionada) => {
+    if (todasCategoriasSelecionadas) {
+      if (selecionada) return;
+      setCategoriasSelecionadas(categorias.filter((item) => item !== categoria));
+      return;
+    }
+
+    const proximaSelecao = selecionada
+      ? [...categoriasSelecionadas, categoria]
+      : categoriasSelecionadas.filter((item) => item !== categoria);
+    setCategoriasSelecionadas(
+      categorias.length > 0 && categorias.every((item) => proximaSelecao.includes(item))
+        ? null
+        : proximaSelecao,
+    );
+  };
+
+  const selecionarTodasCategorias = (selecionada) => {
+    setCategoriasSelecionadas(selecionada ? null : []);
+  };
 
   const totaisPorMes = new Map(
     meses.map((mes) => [mes.value, { receitas: 0, despesas: 0, despesasFiltradas: 0 }]),
@@ -95,17 +123,16 @@ export function Dashboard() {
       typeof transacao.category === 'string' && transacao.category.trim()
         ? transacao.category.trim()
         : 'Sem categoria';
+    const categoriaIncluida =
+      todasCategoriasSelecionadas || categoriasSelecionadas.includes(categoria);
     if (totais) {
       totais.despesas += centavos;
-      if (
-        categoriaSelecionada === ALL_CATEGORIES_VALUE ||
-        categoria === categoriaSelecionada
-      ) {
+      if (categoriaIncluida) {
         totais.despesasFiltradas += centavos;
       }
     }
 
-    if (mesKey === mesSelecionado) {
+    if (mesKey === mesSelecionado && categoriaIncluida) {
       totaisPorCategoria.set(categoria, (totaisPorCategoria.get(categoria) ?? 0) + centavos);
     }
   });
@@ -120,11 +147,21 @@ export function Dashboard() {
     despesasFiltradas: 0,
   };
   const saldoTotal = totaisSelecionados.receitas - totaisSelecionados.despesas;
+  const obterValorDoGrafico = (mes) =>
+    tipoGrafico === 'receitas' ? mes.receitas : mes.despesasFiltradas;
   const maiorBarra = Math.max(
     1,
-    ...dadosMensais.map((mes) => Math.max(mes.receitas, mes.despesasFiltradas)),
+    ...dadosMensais.map(obterValorDoGrafico),
   );
-  const temDadosMensais = dadosMensais.some((mes) => mes.receitas > 0 || mes.despesasFiltradas > 0);
+  const temDadosMensais = dadosMensais.some((mes) => obterValorDoGrafico(mes) > 0);
+  const rotuloTipoGrafico = tipoGrafico === 'receitas' ? 'Receitas' : 'Despesas';
+  const rotuloFiltroCategoria = todasCategoriasSelecionadas
+    ? 'Todas as categorias'
+    : categoriasSelecionadas.length === 0
+      ? 'Nenhuma categoria selecionada'
+      : `${categoriasSelecionadas.length} ${
+        categoriasSelecionadas.length === 1 ? 'categoria selecionada' : 'categorias selecionadas'
+      }`;
   const distribuicaoCategorias = [...totaisPorCategoria.entries()]
     .map(([nome, valor], index) => ({
       nome,
@@ -162,10 +199,7 @@ export function Dashboard() {
     {
       titulo: 'Despesas no filtro',
       valor: formatarCentavos(totaisSelecionados.despesasFiltradas),
-      observacao:
-        categoriaSelecionada === ALL_CATEGORIES_VALUE
-          ? `Todas as categorias · ${mesAtual.label}`
-          : `${categoriaSelecionada} · ${mesAtual.label}`,
+      observacao: `${rotuloFiltroCategoria} · ${mesAtual.label}`,
       Icon: ArrowDownRight,
       estilo: 'expense',
     },
@@ -193,9 +227,9 @@ export function Dashboard() {
 
       <section className="surface-card dashboard-filters" aria-labelledby="dashboard-filters-title">
         <div>
-          <h2 className="section-title" id="dashboard-filters-title">Análise do período</h2>
+          <h2 className="section-title" id="dashboard-filters-title">Filtros do dashboard</h2>
           <p className="section-description">
-            Compare os últimos seis meses e filtre as despesas por categoria.
+            Escolha o mês de referência, o tipo de gráfico e uma ou mais categorias de despesas.
           </p>
         </div>
         <div className="dashboard-filter-controls">
@@ -207,28 +241,69 @@ export function Dashboard() {
               value={mesSelecionado}
               onChange={(event) => setMesSelecionado(event.target.value)}
             >
-              {meses.map((mes) => (
+              {opcoesMes.map((mes) => (
                 <option key={mes.value} value={mes.value}>{mes.label}</option>
               ))}
             </select>
           </div>
-          <div className="form-field">
-            <label className="form-label" htmlFor="filtro-categoria">Categoria das despesas</label>
-            <select
-              className="form-select"
-              id="filtro-categoria"
-              value={categoriaSelecionada}
-              onChange={(event) => setCategoriaSelecionada(event.target.value)}
-            >
-              <option value={ALL_CATEGORIES_VALUE}>Todas as categorias</option>
-              {categorias.map((categoria) => (
-                <option key={categoria} value={categoria}>{categoria}</option>
+          <fieldset className="chart-type-filter">
+            <legend className="form-label">Tipo de gráfico</legend>
+            <div className="chart-type-options">
+              {[
+                { value: 'receitas', label: 'Receitas' },
+                { value: 'despesas', label: 'Despesas' },
+              ].map((tipo) => (
+                <label
+                  className={`chart-type-option${tipoGrafico === tipo.value ? ' is-selected' : ''}`}
+                  key={tipo.value}
+                >
+                  <input
+                    type="radio"
+                    name="tipo-grafico"
+                    value={tipo.value}
+                    checked={tipoGrafico === tipo.value}
+                    onChange={() => setTipoGrafico(tipo.value)}
+                  />
+                  <span>{tipo.label}</span>
+                </label>
               ))}
-            </select>
-          </div>
+            </div>
+          </fieldset>
         </div>
+        <fieldset className="expense-category-filter">
+          <legend className="form-label">Categorias de despesas</legend>
+          <p className="category-filter-help">
+            Todas começam marcadas. Desmarque as que deseja excluir; o gráfico de receitas não é afetado.
+          </p>
+          <div className="category-checkbox-grid">
+            <label className="category-checkbox">
+              <input
+                type="checkbox"
+                checked={todasCategoriasSelecionadas}
+                onChange={(event) => selecionarTodasCategorias(event.target.checked)}
+              />
+              <span>Todas as categorias</span>
+            </label>
+            {categorias.map((categoria) => (
+              <label className="category-checkbox" key={categoria}>
+                <input
+                  type="checkbox"
+                  checked={
+                    todasCategoriasSelecionadas ||
+                    categoriasSelecionadas.includes(categoria)
+                  }
+                  onChange={(event) => alternarCategoria(categoria, event.target.checked)}
+                />
+                <span>{categoria}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <p className="dashboard-filter-note">
-          O filtro afeta os totais e o comparativo mensal. A distribuição inclui todas as categorias; o saldo considera todas as despesas.
+          O saldo considera todas as receitas e despesas do mês, mesmo quando o gráfico está filtrado.
+        </p>
+        <p className="dashboard-print-context print-only">
+          Mês: {mesAtual.label} · Gráfico: {rotuloTipoGrafico} · Categorias: {rotuloFiltroCategoria}
         </p>
       </section>
 
@@ -252,18 +327,17 @@ export function Dashboard() {
       <section className="insights-grid" aria-label="Gráficos financeiros">
         <article className="surface-card insight-card" aria-labelledby="cashflow-title">
           <div className="insight-heading">
-            <h2 className="section-title" id="cashflow-title">Receitas e despesas</h2>
+            <h2 className="section-title" id="cashflow-title">{rotuloTipoGrafico} por mês</h2>
             <p className="section-description">
-              Comparativo mensal nos últimos seis meses. Despesas respeitam o filtro selecionado.
+              Valores mensais dos seis meses até {mesAtual.label}.
             </p>
           </div>
           <div className="chart-legend" aria-hidden="true">
-            <span><i className="legend-swatch income" />Receitas</span>
             <span>
-              <i className="legend-swatch expense" />
-              {categoriaSelecionada === ALL_CATEGORIES_VALUE
-                ? 'Despesas'
-                : `Despesas · ${categoriaSelecionada}`}
+              <i className={`legend-swatch ${tipoGrafico === 'receitas' ? 'income' : 'expense'}`} />
+              {tipoGrafico === 'receitas'
+                ? 'Receitas mensais'
+                : `Despesas · ${rotuloFiltroCategoria}`}
             </span>
           </div>
           {loading || error ? (
@@ -272,53 +346,49 @@ export function Dashboard() {
             </p>
           ) : temDadosMensais ? (
             <>
-            <div className="cashflow-chart" role="list" aria-label="Comparativo de receitas e despesas por mês">
-              {dadosMensais.map((mes) => {
-                const alturaReceita = mes.receitas
-                  ? Math.max(4, (mes.receitas / maiorBarra) * 145)
-                  : 0;
-                const alturaDespesa = mes.despesasFiltradas
-                  ? Math.max(4, (mes.despesasFiltradas / maiorBarra) * 145)
-                  : 0;
-                return (
-                  <div
-                    className="cashflow-month"
-                    role="listitem"
-                    aria-label={`${mes.label}: receitas ${formatarCentavos(mes.receitas)}, despesas ${formatarCentavos(mes.despesasFiltradas)}`}
-                    key={mes.value}
-                  >
-                    <div className="cashflow-bars" aria-hidden="true">
-                      <span className="cashflow-bar income" style={{ height: `${alturaReceita}px` }} />
-                      <span className="cashflow-bar expense" style={{ height: `${alturaDespesa}px` }} />
+              <div
+                className="cashflow-chart"
+                role="list"
+                aria-label={`${rotuloTipoGrafico} por mês`}
+              >
+                {dadosMensais.map((mes) => {
+                  const valor = obterValorDoGrafico(mes);
+                  const altura = valor ? Math.max(4, (valor / maiorBarra) * 145) : 0;
+                  return (
+                    <div
+                      className="cashflow-month"
+                      role="listitem"
+                      aria-label={`${mes.label}: ${rotuloTipoGrafico.toLowerCase()} ${formatarCentavos(valor)}`}
+                      key={mes.value}
+                    >
+                      <div className="cashflow-bars" aria-hidden="true">
+                        <span
+                          className={`cashflow-bar ${tipoGrafico === 'receitas' ? 'income' : 'expense'}`}
+                          style={{ height: `${altura}px` }}
+                        />
+                      </div>
+                      <span className="cashflow-month-label">{mes.shortLabel}</span>
                     </div>
-                    <span className="cashflow-month-label">{mes.shortLabel}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <table className="monthly-data-table print-only">
-              <caption>Valores mensais do comparativo</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Mês</th>
-                  <th scope="col">Receitas</th>
-                  <th scope="col">
-                    {categoriaSelecionada === ALL_CATEGORIES_VALUE
-                      ? 'Despesas'
-                      : `Despesas · ${categoriaSelecionada}`}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {dadosMensais.map((mes) => (
-                  <tr key={mes.value}>
-                    <th scope="row">{mes.label}</th>
-                    <td>{formatarCentavos(mes.receitas)}</td>
-                    <td>{formatarCentavos(mes.despesasFiltradas)}</td>
+                  );
+                })}
+              </div>
+              <table className="monthly-data-table print-only">
+                <caption>{rotuloTipoGrafico} dos últimos seis meses</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Mês</th>
+                    <th scope="col">{rotuloTipoGrafico}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {dadosMensais.map((mes) => (
+                    <tr key={mes.value}>
+                      <th scope="row">{mes.label}</th>
+                      <td>{formatarCentavos(obterValorDoGrafico(mes))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </>
           ) : (
             <p className="empty-state chart-empty-state">
@@ -330,7 +400,9 @@ export function Dashboard() {
         <article className="surface-card insight-card" aria-labelledby="categories-title">
           <div className="insight-heading">
             <h2 className="section-title" id="categories-title">Despesas por categoria</h2>
-            <p className="section-description">Distribuição de {mesAtual.label}.</p>
+            <p className="section-description">
+              {mesAtual.label} · {rotuloFiltroCategoria}.
+            </p>
           </div>
           {loading || error ? (
             <p className="empty-state chart-empty-state" role={loading ? 'status' : undefined}>
@@ -365,7 +437,7 @@ export function Dashboard() {
             </div>
           ) : (
             <p className="empty-state chart-empty-state">
-              Nenhuma despesa registrada em {mesAtual.label}.
+              Nenhuma despesa corresponde às categorias selecionadas em {mesAtual.label}.
             </p>
           )}
         </article>

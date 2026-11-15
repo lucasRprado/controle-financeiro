@@ -6,5 +6,3 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
   'Lazer',
   'Outros',
 ];
-
-export const ALL_CATEGORIES_VALUE = '__todas_as_categorias__';

@@ -358,16 +358,101 @@ select:focus-visible {
 
 .dashboard-filters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 1fr);
-  align-items: end;
-  gap: 12px 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   margin-bottom: 18px;
 }
 
 .dashboard-filter-controls {
   display: grid;
+  grid-template-columns: minmax(200px, 0.65fr) minmax(280px, 1fr);
+  align-items: end;
+  gap: 16px;
+}
+
+.chart-type-filter,
+.expense-category-filter {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.chart-type-filter {
+  display: grid;
+  gap: 7px;
+}
+
+.chart-type-filter legend,
+.expense-category-filter legend {
+  padding: 0;
+}
+
+.chart-type-options {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 8px;
+}
+
+.chart-type-option {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  color: var(--color-text);
+  background: #fffefa;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.87rem;
+  font-weight: 600;
+}
+
+.chart-type-option.is-selected {
+  background: var(--color-sage-soft);
+  border-color: #9db59e;
+}
+
+.chart-type-option input,
+.category-checkbox input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  margin: 0;
+  accent-color: var(--color-forest);
+}
+
+.expense-category-filter {
+  display: grid;
+  gap: 8px;
+}
+
+.category-filter-help {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.category-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.category-checkbox {
+  display: flex;
+  min-height: 42px;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  color: var(--color-text);
+  background: #fffefa;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.84rem;
 }
 
 .dashboard-filter-note {
@@ -379,7 +464,7 @@ select:focus-visible {
 
 .insights-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   margin-top: 18px;
 }
@@ -1069,6 +1154,10 @@ select:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .dashboard-filter-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .dashboard-filter-note {
     grid-column: auto;
   }
@@ -1305,7 +1394,7 @@ select:focus-visible {
   }
 
   .insights-grid {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 
@@ -1331,8 +1420,21 @@ select:focus-visible {
     break-inside: avoid-page;
   }
 
-  .print-only {
+  table.print-only {
     display: table !important;
+  }
+
+  .dashboard-filter-controls,
+  .expense-category-filter,
+  .dashboard-filter-note {
+    display: none !important;
+  }
+
+  .dashboard-print-context.print-only {
+    display: block !important;
+    margin: 0;
+    color: #404840;
+    font-size: 9pt;
   }
 
   .monthly-data-table {
